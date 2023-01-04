@@ -1,0 +1,4 @@
+@EndUserText.label: 'Service Defenition Collector'
+define service ZSD_COLLECTOR {
+  expose ZINT_COLLECTOR as Collector;
+}

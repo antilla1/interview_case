@@ -1,0 +1,5 @@
+CLASS zbp_int_monitor_cds DEFINITION PUBLIC ABSTRACT FINAL FOR BEHAVIOR OF zint_monitor_cds.
+ENDCLASS.
+
+CLASS zbp_int_monitor_cds IMPLEMENTATION.
+ENDCLASS.

@@ -1,0 +1,4 @@
+@EndUserText.label: 'Service Defenition Monitor'
+define service ZSD_MONITOR {
+  expose ZINT_MONITOR_CDS as Monitor;
+}

@@ -1,0 +1,4 @@
+@EndUserText.label: 'Service Defenition Runned'
+define service ZSD_RUNNED {
+  expose ZINT_RUNNED_CDS as Runned;
+}
