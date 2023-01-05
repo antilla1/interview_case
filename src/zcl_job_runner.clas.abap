@@ -16,7 +16,8 @@ CLASS zcl_job_runner DEFINITION
     METHODS:
       run_jobs
         RAISING cx_apj_rt_content,
-      send_result.
+      send_result
+        RAISING cx_root.
 ENDCLASS.
 
 
@@ -69,8 +70,6 @@ CLASS zcl_job_runner IMPLEMENTATION.
       CATCH cx_root INTO DATA(job_scheduling_exception).
         out->write( |Exception has occured: { job_scheduling_exception->previous->get_longtext( ) }| ).
     ENDTRY.
-
-
 
   ENDMETHOD.
   METHOD run_jobs.
@@ -145,30 +144,60 @@ CLASS zcl_job_runner IMPLEMENTATION.
     DATA:
       lv_status TYPE cl_apj_rt_api=>ty_job_status
     , lv_job_result TYPE xstring
+    , ls_runned_and_posted TYPE ztint_runned
+    , lv_data TYPE xstring
+    , lv_send TYPE string
     .
 
-    SELECT *
-        FROM ztint_runned
+    SELECT m~collector_job_id,
+          int_job_name,
+          int_job_count,
+          collector_name,
+          runned_date,
+          sended,
+          job_result
+        FROM ztint_runned AS r
+    INNER JOIN ztint_monitor AS m ON r~collector_job_id = m~collector_job_id
         WHERE sended <> @abap_true
         INTO TABLE @DATA(lt_runned).
 
     LOOP AT lt_runned ASSIGNING FIELD-SYMBOL(<ls_runned>).
-      TRY.
-          cl_apj_rt_api=>get_job_status(
-              EXPORTING
-                  iv_jobname  = <ls_runned>-int_job_name
-                  iv_jobcount = <ls_runned>-int_job_count
-              IMPORTING
-                  ev_job_status = lv_status
-              ).
-          IF lv_status = 'F'.
+      cl_apj_rt_api=>get_job_status(
+          EXPORTING
+              iv_jobname  = <ls_runned>-int_job_name
+              iv_jobcount = <ls_runned>-int_job_count
+          IMPORTING
+              ev_job_status = lv_status
+          ).
 
-            "Send job data to AWS
-            <ls_runned>-sended = abap_true.
-          ENDIF.
-        CATCH cx_apj_rt INTO DATA(lx_apj_rt).
+      IF lv_status = 'F'.
+        lv_data = /ui2/cl_json=>serialize(
+                              EXPORTING
+                                  data = <ls_runned>
+                                  pretty_name = /ui2/cl_json=>pretty_mode-low_case ).
+        lv_send = lv_data.
+*        TRY.
+        DATA(lo_url_destination) = cl_http_destination_provider=>create_by_url(
+                                            'https://httpbin.org/post').
+        DATA(lo_http_client) = cl_web_http_client_manager=>create_by_http_destination( lo_url_destination ).
+        DATA(lo_request) = lo_http_client->get_http_request(  ).
+        lo_request->set_text( lv_send ).
+        DATA(lo_response) = lo_http_client->execute( if_web_http_client=>post ).
 
-      ENDTRY.
+        "Send job data to AWS
+        <ls_runned>-sended = abap_true.
+        ls_runned_and_posted = CORRESPONDING #( <ls_runned> ).
+        MODIFY ztint_runned FROM @ls_runned_and_posted.
+        COMMIT WORK.
+*          CATCH cx_http_dest_provider_error INTO DATA(lx_http_dest_provider_error).
+*
+*          CATCH cx_web_http_client_error.
+*              RAISE EXCEPTION TYPE zcx_monitor
+*                EXPORTING
+*                  previous = lx_apj_rt.
+*        ENDTRY.
+      ENDIF.
+
     ENDLOOP.
 
   ENDMETHOD.

@@ -85,7 +85,8 @@ define root view entity ZINT_RUNNED_CDS
       runned_date,
       
       @UI: {
-      fieldGroup: [{qualifier: 'GeneralData2',position: 50,importance: #HIGH }]
+      lineItem: [ { position: 40, importance: #HIGH , label: 'Sended'} ],
+      fieldGroup: [{qualifier: 'GeneralData2',position: 40,importance: #HIGH }]
       }
       @EndUserText:{label: 'Sended'}
       sended,
